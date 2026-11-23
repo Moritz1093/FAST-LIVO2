@@ -1,5 +1,29 @@
 # FAST-LIVO2
 
+> **Fork note (Moritz1093/FAST-LIVO2):** this fork only adds support for **compressed camera images**
+> (`sensor_msgs/CompressedImage`, e.g. JPEG). Everything else is unchanged from
+> [hku-mars/FAST-LIVO2](https://github.com/hku-mars/FAST-LIVO2).
+>
+> The image is now subscribed via `image_transport`. The new parameter `common/img_transport` selects how:
+>
+> | `img_transport` | `img_topic` (base topic) | Subscribed topic | Message type |
+> |---|---|---|---|
+> | `raw` (default, same as upstream) | `/camera/image_raw` | `/camera/image_raw` | `sensor_msgs/Image` |
+> | `compressed` | `/camera/image` | `/camera/image/compressed` | `sensor_msgs/CompressedImage` |
+>
+> For `compressed`, set `img_topic` to the topic **without** the `/compressed` suffix; image_transport appends it.
+> Example (`config/avia.yaml`):
+>
+> ```yaml
+> common:
+>   img_topic: "/camera/image"
+>   img_transport: "compressed"
+> ```
+>
+> Requires the plugin `compressed_image_transport` (Noetic: `sudo apt install ros-noetic-image-transport-plugins`).
+> The `republish` node in the launch files is no longer needed for compressed bags.
+> Other plugins (e.g. `theora`) work the same way if installed.
+
 ## FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry
 
 ### 📢 News

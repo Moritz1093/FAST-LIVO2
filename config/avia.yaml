@@ -1,5 +1,6 @@
 common:
   img_topic: "/left_camera/image"
+  img_transport: "raw"   # raw | compressed (e.g. img_topic "/camera/image" -> /camera/image/compressed)
   lid_topic: "/livox/lidar"
   imu_topic: "/livox/imu"
   img_en: 1

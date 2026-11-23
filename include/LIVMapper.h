@@ -69,7 +69,7 @@ public:
   std::unordered_map<VOXEL_LOCATION, VoxelOctoTree *> voxel_map;
   
   string root_dir;
-  string lid_topic, imu_topic, seq_name, img_topic;
+  string lid_topic, imu_topic, seq_name, img_topic, img_transport;
   V3D extT;
   M3D extR;
 
@@ -163,7 +163,7 @@ public:
   ros::Publisher voxel_pub;
   ros::Subscriber sub_pcl;
   ros::Subscriber sub_imu;
-  ros::Subscriber sub_img;
+  image_transport::Subscriber sub_img;
   ros::Publisher pubLaserCloudFullRes;
   ros::Publisher pubNormal;
   ros::Publisher pubSubVisualMap;

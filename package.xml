@@ -44,6 +44,7 @@
   <run_depend>cv_bridge</run_depend>
   <build_depend>image_transport</build_depend> 
   <run_depend>image_transport</run_depend> 
+  <run_depend>compressed_image_transport</run_depend>
 
   <test_depend>rostest</test_depend>
   <test_depend>rosbag</test_depend>
