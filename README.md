@@ -23,6 +23,9 @@
 > Requires the plugin `compressed_image_transport` (Noetic: `sudo apt install ros-noetic-image-transport-plugins`).
 > The `republish` node in the launch files is no longer needed for compressed bags.
 > Other plugins (e.g. `theora`) work the same way if installed.
+>
+> Config for the AVIACAM scanner (Livox Avia + hardware-synced camera, compressed images):
+> `roslaunch fast_livo mapping_aviacam.launch` (`config/aviacam.yaml`, `config/camera_aviacam.yaml`).
 
 ## FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry
 
