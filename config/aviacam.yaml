@@ -93,5 +93,5 @@ pcd_save:
   # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
 
 image_save:
-  img_save_en: true
+  img_save_en: false  # true = every image as PNG to Log/image (10 Hz x 1024x1280: tens of MB/s)
   interval: 1
