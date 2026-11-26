@@ -30,10 +30,12 @@
 > **Branch `ros1-fixes`:** bug fixes from upstream pull requests (cherry-picked, original authors kept):
 > [#90](https://github.com/hku-mars/FAST-LIVO2/pull/90) (NaN/zero IMU dt) and
 > [#465](https://github.com/hku-mars/FAST-LIVO2/pull/465) (first-point undistortion, VIO leak/uninitialized
-> memory/out-of-bounds reads, per-point mutex removed).
+> memory/out-of-bounds reads, per-point mutex removed), plus IMU/images buffered before the first LiDAR frame
+> for a deterministic start (ported from [samuelyhsu/FAST-LIVO2@018258d](https://github.com/samuelyhsu/FAST-LIVO2/commit/018258d)).
 > Tested on ROS Noetic with FAST-LIVO2-Dataset bags (Retail_Street, CBD_Building_01, Bright_Screen_Wall),
-> 5 runs each vs. `main`: no crashes or dropped frames, drift unchanged or better,
-> **11–21 % less processing time per frame**.
+> 5 runs each vs. `main` (`rosbag play -d 2`, all messages received): no crashes or dropped frames,
+> drift unchanged or better, **15–21 % less processing time per frame**, and **reproducible runs**
+> (identical trajectories run to run; `main` varies by ~0.4 cm).
 
 ## FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry
 
