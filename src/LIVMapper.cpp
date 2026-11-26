@@ -12,6 +12,18 @@ which is included as part of this source code package.
 
 #include "LIVMapper.h"
 
+namespace
+{
+// Do not drop IMU and image messages that arrive before the first LiDAR frame:
+// LiDAR, IMU and camera use separate connections, so whether a message arrives
+// before the first LiDAR frame is a race that differs from run to run. Dropping a
+// varying number of messages changes the samples used for the first undistortion
+// and IMU initialization, and the result diverges from the first LIO update on.
+// Buffer limits before the first LiDAR frame (avoid unbounded growth if no LiDAR arrives).
+constexpr size_t kMaxImuBufferBeforeLidar = 400;
+constexpr size_t kMaxImgBufferBeforeLidar = 20;
+} // namespace
+
 LIVMapper::LIVMapper(ros::NodeHandle &nh)
     : extT(0, 0, 0),
       extR(M3D::Identity())
@@ -771,18 +783,17 @@ void LIVMapper::imu_cbk(const sensor_msgs::Imu::ConstPtr &msg_in)
 {
   if (!imu_en) return;
 
-  if (last_timestamp_lidar < 0.0) return;
   // ROS_INFO("get imu at time: %.6f", msg_in->header.stamp.toSec());
   sensor_msgs::Imu::Ptr msg(new sensor_msgs::Imu(*msg_in));
   msg->header.stamp = ros::Time().fromSec(msg->header.stamp.toSec() - imu_time_offset);
   double timestamp = msg->header.stamp.toSec();
 
-  if (fabs(last_timestamp_lidar - timestamp) > 0.5 && (!ros_driver_fix_en))
+  if (last_timestamp_lidar > 0.0 && fabs(last_timestamp_lidar - timestamp) > 0.5 && (!ros_driver_fix_en))
   {
     ROS_WARN("IMU and LiDAR not synced! delta time: %lf .\n", last_timestamp_lidar - timestamp);
   }
 
-  if (ros_driver_fix_en) timestamp += std::round(last_timestamp_lidar - timestamp);
+  if (ros_driver_fix_en && last_timestamp_lidar > 0.0) timestamp += std::round(last_timestamp_lidar - timestamp);
   msg->header.stamp = ros::Time().fromSec(timestamp);
 
   mtx_buffer.lock();
@@ -807,6 +818,10 @@ void LIVMapper::imu_cbk(const sensor_msgs::Imu::ConstPtr &msg_in)
   last_timestamp_imu = timestamp;
 
   imu_buffer.push_back(msg);
+  if (last_timestamp_lidar < 0.0)
+  {
+    while (imu_buffer.size() > kMaxImuBufferBeforeLidar) imu_buffer.pop_front();
+  }
   // cout<<"got imu: "<<timestamp<<" imu size "<<imu_buffer.size()<<endl;
   mtx_buffer.unlock();
   if (imu_prop_enable)
@@ -848,7 +863,6 @@ void LIVMapper::img_cbk(const sensor_msgs::ImageConstPtr &msg_in)
   double msg_header_time = msg->header.stamp.toSec() + img_time_offset;
   if (abs(msg_header_time - last_timestamp_img) < 0.001) return;
   ROS_INFO("Get image, its header time: %.6f", msg_header_time);
-  if (last_timestamp_lidar < 0) return;
 
   if (msg_header_time < last_timestamp_img)
   {
@@ -871,6 +885,14 @@ void LIVMapper::img_cbk(const sensor_msgs::ImageConstPtr &msg_in)
   cv::Mat img_cur = getImageFromMsg(msg);
   img_buffer.push_back(img_cur);
   img_time_buffer.push_back(img_time_correct);
+  if (last_timestamp_lidar < 0.0)
+  {
+    while (img_buffer.size() > kMaxImgBufferBeforeLidar)
+    {
+      img_buffer.pop_front();
+      img_time_buffer.pop_front();
+    }
+  }
 
   // ROS_INFO("Correct Image time: %.6f", img_time_correct);
 
