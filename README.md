@@ -49,6 +49,8 @@
 > [#455](https://github.com/hku-mars/FAST-LIVO2/pull/455) (VIO no longer waits on the LiDAR buffer; lower latency live),
 > plus IMU/images buffered before the first LiDAR frame for a deterministic start
 > (ported from [samuelyhsu/FAST-LIVO2@018258d](https://github.com/samuelyhsu/FAST-LIVO2/commit/018258d)).
+> Own fix, found during the ROS2 port: the VIO update sums the patch errors in a fixed order (the OpenMP float
+> reduction made runs differ slightly from run to run).
 >
 > Tested on ROS1 Noetic, tag `ros1-final` (`rosbag play -d 2`, all messages received; no crashes or dropped frames in any run):
 >
@@ -58,6 +60,18 @@
 > | same: run-to-run difference | ~0.4 cm | **0.00 cm** (identical) |
 > | NTU-VIRAL eee_01, 3 runs: error vs. ground truth (APE RMSE) | 2.51 cm | 2.50 cm |
 > | same: time per frame | 23.0 ms | 21.8 ms (−5 %) |
+>
+> Tested on ROS2 Jazzy, `main` against `ros1-final` (same bags converted to mcap, `ros2 bag play --delay 5` with the
+> player's QoS history raised so that no message is dropped; all messages received, no crashes or dropped frames):
+>
+> | Test | ROS1 `ros1-final` | ROS2 `main` |
+> |---|---|---|
+> | FAST-LIVO2-Dataset (Retail_Street, CBD_Building_01, Bright_Screen_Wall), 5 runs each: time per frame | 11.8–32.9 ms | 11.8–31.6 ms (0–4 % less) |
+> | same: run-to-run difference | 0.00 cm | **0.00 cm** (identical) |
+> | same: difference ROS1 ↔ ROS2 (APE RMSE) | – | 0.55–0.58 cm (rounding) |
+> | same: memory at the end (RSS) | 439–865 MB | 1–9 % less |
+> | NTU-VIRAL eee_01, 3 runs: error vs. ground truth (APE RMSE) | 2.50 cm | 2.50 cm |
+> | same: time per frame | 21.5 ms | 21.2 ms (−1 %) |
 >
 > **Not included:** [#311](https://github.com/hku-mars/FAST-LIVO2/pull/311) (covariance with attitude/extrinsics)
 > gave no measurable accuracy gain on NTU-VIRAL (2.50 cm) at +3–5 % time per frame;
