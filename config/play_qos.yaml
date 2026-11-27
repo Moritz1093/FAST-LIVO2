@@ -1,0 +1,16 @@
+# QoS overrides for `ros2 bag play --qos-profile-overrides-path config/play_qos.yaml`.
+# Bags converted from ROS1 (rosbags-convert) carry no QoS profiles, so the player publishes with
+# reliable KeepLast(10). If the node falls behind for a moment (CPU load), the oldest messages are
+# overwritten before they arrive; with a 200 Hz IMU that is only 50 ms. A deep history keeps all of them.
+# Topics of the configs in this folder; add your own topics in the same way.
+/livox/imu:                    {history: keep_last, depth: 100000, reliability: reliable, durability: volatile}
+/livox/lidar:                  {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/left_camera/image:            {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/left_camera/image/compressed: {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/camera/image/compressed:      {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/imu/imu:                      {history: keep_last, depth: 100000, reliability: reliable, durability: volatile}
+/left/image_raw:               {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/os1_cloud_node1/points:       {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/alphasense/imu:               {history: keep_last, depth: 100000, reliability: reliable, durability: volatile}
+/alphasense/cam0/image_raw:    {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}
+/hesai/pandar:                 {history: keep_last, depth: 10000, reliability: reliable, durability: volatile}

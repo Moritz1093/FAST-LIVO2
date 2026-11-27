@@ -210,10 +210,14 @@ large bags).
 
 ```
 ros2 launch fast_livo mapping_avia.launch.py
-ros2 bag play --delay 2 Retail_Street
+ros2 bag play --delay 2 --qos-profile-overrides-path config/play_qos.yaml Retail_Street
 ```
 
 `--delay 2` gives the node time to connect; without it the first messages of the bag can be lost.
+`config/play_qos.yaml` (path relative to this source folder) gives the player a deep message history:
+converted bags carry no QoS profiles, so the player would keep only 10 messages per topic, and under CPU load
+IMU messages are lost before they reach the node (results then differ from run to run). For other topics, add
+them to the file in the same way.
 For bags with compressed images (e.g. Bright_Screen_Wall) add `img_transport:=compressed` to the launch command.
 
 Results (poses with `evo.pose_output_en`, point clouds with `pcd_save.pcd_save_en`) are written to `Log/`
