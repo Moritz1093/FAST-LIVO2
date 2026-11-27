@@ -1,17 +1,19 @@
-# AVIACAM camera HT-GE134GC, rotated 270 deg -> 1024x1280
-cam_model: Pinhole
-cam_width: 1024
-cam_height: 1280
-scale: 1.0
+/**:
+  ros__parameters:
+    # AVIACAM camera HT-GE134GC, rotated 270 deg -> 1024x1280
+    cam_model: Pinhole
+    cam_width: 1024
+    cam_height: 1280
+    scale: 1.0
 
-# Intrinsics (camera matrix K), ROS camera_calibration, 106 images, 2026-10-09
-cam_fx: 871.727100
-cam_fy: 871.898282
-cam_cx: 500.532578
-cam_cy: 644.139583
+    # Intrinsics (camera matrix K), ROS camera_calibration, 106 images, 2026-10-09
+    cam_fx: 871.727100
+    cam_fy: 871.898282
+    cam_cx: 500.532578
+    cam_cy: 644.139583
 
-# Distortion: k1, k2, p1, p2
-cam_d0: -0.096532
-cam_d1: 0.081834
-cam_d2: 0.000900
-cam_d3: -0.000108
+    # Distortion: k1, k2, p1, p2
+    cam_d0: -0.096532
+    cam_d1: 0.081834
+    cam_d2: 0.000900
+    cam_d3: -0.000108
