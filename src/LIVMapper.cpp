@@ -652,10 +652,14 @@ void LIVMapper::run()
   rclcpp::WallRate rate(5000);
   while (rclcpp::ok()) 
   {
-    executor.spin_all(std::chrono::nanoseconds(0));
+    // ROS2 throws if the context is shut down (Ctrl+C) during spin or sleep; ROS1 returned instead.
+    // Leave the loop in that case so that savePCD() below still runs.
+    try { executor.spin_all(std::chrono::nanoseconds(0)); }
+    catch (const std::runtime_error &) { if (!rclcpp::ok()) break; throw; }
     if (!sync_packages(LidarMeasures)) 
     {
-      rate.sleep();
+      try { rate.sleep(); }
+      catch (const std::runtime_error &) { if (!rclcpp::ok()) break; throw; }
       continue;
     }
     handleFirstFrame();
