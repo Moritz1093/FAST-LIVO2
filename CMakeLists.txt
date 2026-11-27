@@ -36,6 +36,11 @@ else()
   add_definitions(-DX86_ARCH)
 endif()
 
+# Eigen 3.4 with -march=native (AVX) aligns heap memory to 32 bytes with its own allocation scheme. Point clouds
+# allocated inside PCL (built without AVX, plain malloc) and freed here then crash (e.g. on shutdown).
+# Use 16 bytes and plain malloc/free as PCL, Sophus and vikit do; -march=native stays.
+add_definitions(-DEIGEN_MAX_ALIGN_BYTES=16 -DEIGEN_MALLOC_ALREADY_ALIGNED=1)
+
 # Define project root directory
 add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/\")
 
