@@ -1631,9 +1631,13 @@ void VIOManager::updateState(cv::Mat img, int level)
     // int desired_threads = std::min(max_threads, total_points);
     // omp_set_num_threads(desired_threads);
   
+    // Patch errors are stored per point and summed in a fixed order after the loop. A float reduction over
+    // the OpenMP threads adds the partial sums in the order the threads finish, so the last bits of
+    // `error` varied from run to run and could flip the `error <= last_error` decision below.
+    std::vector<float> point_error(total_points, 0.0f);
     #ifdef MP_EN
       omp_set_num_threads(MP_PROC_NUM);
-      #pragma omp parallel for reduction(+:error, n_meas)
+      #pragma omp parallel for reduction(+:n_meas)
     #endif
     for (int i = 0; i < total_points; i++)
     {
@@ -1717,8 +1721,9 @@ void VIOManager::updateState(cv::Mat img, int level)
         }
       }
       visual_submap->errors[i] = patch_error;
-      error += patch_error;
+      point_error[i] = patch_error;
     }
+    for (int i = 0; i < total_points; i++) error += point_error[i];
 
     compute_jacobian_time += omp_get_wtime() - t1;
 
