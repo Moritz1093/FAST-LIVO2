@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.8)
 project(fast_livo)
 
 set(CMAKE_BUILD_TYPE "Release")
@@ -75,23 +75,28 @@ else()
   message(STATUS "mimalloc not found, proceeding without it")
 endif()
 
-# Find catkin and required dependencies
-find_package(catkin REQUIRED COMPONENTS
+# Find ament and required ROS2 dependencies
+find_package(ament_cmake REQUIRED)
+set(ros_dependencies
+  rclcpp
+  builtin_interfaces
+  std_msgs
   geometry_msgs
   nav_msgs
   sensor_msgs
-  roscpp
-  rospy
-  std_msgs
-  pcl_ros
-  tf
-  message_generation
-  eigen_conversions
-  vikit_common
-  vikit_ros
+  visualization_msgs
+  tf2
+  tf2_ros
+  pcl_conversions
   cv_bridge
   image_transport
+  vikit_common
+  vikit_ros
+  livox_ros_driver
 )
+foreach(dep ${ros_dependencies})
+  find_package(${dep} REQUIRED)
+endforeach()
 
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
@@ -101,15 +106,8 @@ find_package(Boost REQUIRED COMPONENTS thread)
 
 set(Sophus_LIBRARIES libSophus.so)
 
-# Define the catkin package
-catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs message_runtime cv_bridge vikit_common vikit_ros image_transport
-  DEPENDS EIGEN3 PCL OpenCV Sophus
-)
-
 # Include directories for dependencies
 include_directories(
-  ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
@@ -117,15 +115,19 @@ include_directories(
   include
 )
 
-# Add libraries
-add_library(vio src/vio.cpp src/frame.cpp src/visual_point.cpp)
-add_library(lio src/voxel_map.cpp)
-add_library(pre src/preprocess.cpp)
-add_library(imu_proc src/IMU_Processing.cpp)
-add_library(laser_mapping src/LIVMapper.cpp)
+# Add libraries (shared, as catkin built them in ROS1)
+add_library(vio SHARED src/vio.cpp src/frame.cpp src/visual_point.cpp)
+add_library(lio SHARED src/voxel_map.cpp)
+add_library(pre SHARED src/preprocess.cpp)
+add_library(imu_proc SHARED src/IMU_Processing.cpp)
+add_library(laser_mapping SHARED src/LIVMapper.cpp)
+foreach(lib vio lio pre imu_proc laser_mapping)
+  ament_target_dependencies(${lib} ${ros_dependencies})
+endforeach()
 
 # Add the main executable
 add_executable(fastlivo_mapping src/main.cpp)
+ament_target_dependencies(fastlivo_mapping ${ros_dependencies})
 
 # Link libraries to the executable
 target_link_libraries(fastlivo_mapping
@@ -134,7 +136,6 @@ target_link_libraries(fastlivo_mapping
   lio
   pre
   imu_proc
-  ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${Sophus_LIBRARIES}
@@ -145,3 +146,10 @@ target_link_libraries(fastlivo_mapping
 if(mimalloc_FOUND)
   target_link_libraries(fastlivo_mapping mimalloc)
 endif()
+
+# Install
+install(TARGETS vio lio pre imu_proc laser_mapping LIBRARY DESTINATION lib)
+install(TARGETS fastlivo_mapping DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY config launch rviz_cfg DESTINATION share/${PROJECT_NAME})
+
+ament_package()

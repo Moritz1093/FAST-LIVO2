@@ -17,13 +17,54 @@ which is included as part of this source code package.
 #include <utils/types.h>
 #include <utils/color.h>
 #include <opencv2/opencv.hpp>
-#include <sensor_msgs/Imu.h>
+#include <rclcpp/rclcpp.hpp>
+#include <builtin_interfaces/msg/time.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 #include <sophus/se3.h>
-#include <tf/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <cassert>
+#include <cmath>
 
 using namespace std;
 using namespace Eigen;
 using namespace Sophus;
+
+/*** ROS2 helpers ***/
+// Time conversion bit-identical to ROS1 ros::Time::toSec() / fromSec().
+// rclcpp::Time::seconds() rounds differently, which would change results.
+inline double stamp2sec(const builtin_interfaces::msg::Time &t)
+{
+  return static_cast<double>(t.sec) + 1e-9 * static_cast<double>(t.nanosec);
+}
+
+inline builtin_interfaces::msg::Time sec2stamp(double t)
+{
+  int64_t sec64 = static_cast<int64_t>(std::floor(t));
+  uint64_t nsec = static_cast<uint64_t>(std::round((t - static_cast<double>(sec64)) * 1e9));
+  sec64 += static_cast<int64_t>(nsec / 1000000000ul);
+  nsec %= 1000000000ul;
+  builtin_interfaces::msg::Time out;
+  out.sec = static_cast<int32_t>(sec64);
+  out.nanosec = static_cast<uint32_t>(nsec);
+  return out;
+}
+
+// replaces tf::createQuaternionMsgFromRollPitchYaw (same tf LinearMath algorithm)
+inline geometry_msgs::msg::Quaternion createQuaternionMsgFromRollPitchYaw(double roll, double pitch, double yaw)
+{
+  tf2::Quaternion q;
+  q.setRPY(roll, pitch, yaw);
+  geometry_msgs::msg::Quaternion out;
+  out.x = q.x();
+  out.y = q.y();
+  out.z = q.z();
+  out.w = q.w();
+  return out;
+}
+
+// logger for code outside the node class (ROS_INFO & co. in ROS1)
+inline rclcpp::Logger fastlivo_logger() { return rclcpp::get_logger("laserMapping"); }
 
 #define print_line std::cout << __FILE__ << ", " << __LINE__ << std::endl;
 #define G_m_s2 (9.81)   // Gravaty const in GuangDong/China
@@ -63,7 +104,7 @@ struct MeasureGroup
 {
   double vio_time;
   double lio_time;
-  deque<sensor_msgs::Imu::ConstPtr> imu;
+  deque<sensor_msgs::msg::Imu::ConstSharedPtr> imu;
   cv::Mat img;
   MeasureGroup()
   {
