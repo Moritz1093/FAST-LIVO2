@@ -175,7 +175,7 @@ Vikit contains camera models, some math and interpolation functions that we need
 (ament packages `vikit_common`, `vikit_ros`):
 
 ```bash
-cd ~/ros2_ws/src
+cd ~/fast_livo2_ws/src
 git clone -b ros2 https://github.com/Moritz1093/rpg_vikit.git
 ```
 
@@ -185,7 +185,7 @@ The ROS2 message package `livox_ros_driver` (only `CustomMsg`/`CustomPoint`, no 
 the type name of ROS1 Livox bags:
 
 ```bash
-cd ~/ros2_ws/src
+cd ~/fast_livo2_ws/src
 git clone https://github.com/Moritz1093/livox_ros_driver_msgs.git
 ```
 
@@ -196,7 +196,7 @@ git clone https://github.com/Moritz1093/livox_ros_driver_msgs.git
 Clone the repository and build with colcon:
 
 ```
-cd ~/ros2_ws/src
+cd ~/fast_livo2_ws/src
 git clone https://github.com/Moritz1093/FAST-LIVO2
 cd ..
 colcon build --packages-up-to fast_livo
@@ -209,7 +209,7 @@ source install/setup.bash
 stay on the host in a workspace that is mounted into the container:
 
 ```
-mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
+mkdir -p ~/fast_livo2_ws/src && cd ~/fast_livo2_ws/src
 git clone -b ros2 https://github.com/Moritz1093/rpg_vikit.git
 git clone https://github.com/Moritz1093/livox_ros_driver_msgs.git
 git clone https://github.com/Moritz1093/FAST-LIVO2
@@ -217,7 +217,7 @@ docker build -t fast_livo2_ros2:jazzy FAST-LIVO2/docker
 xhost +local:   # only for rviz2
 docker run -it --name fast_livo2_ros2 --net host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
   -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
-  -v ~/ros2_ws:/root/ros2_ws -v ~/bags:/bags:ro fast_livo2_ros2:jazzy
+  -v ~/fast_livo2_ws:/root/fast_livo2_ws -v ~/bags:/bags:ro fast_livo2_ros2:jazzy
 # in the container:
 colcon build --packages-up-to fast_livo && source install/setup.bash
 ```
@@ -228,7 +228,7 @@ colcon build --packages-up-to fast_livo && source install/setup.bash
   send and receive ROS2 traffic on the local network). Leave it out for live sensors on other machines.
 - Back into the container later: `docker start -ai fast_livo2_ros2`; a second shell: `docker exec -it fast_livo2_ros2 bash`.
 - Files created in the container (`build/`, `install/`, `log/`, `Log/` results) belong to root. Before deleting
-  them on the host: `docker run --rm -v ~/ros2_ws:/ws fast_livo2_ros2:jazzy chown -R $(id -u):$(id -g) /ws`
+  them on the host: `docker run --rm -v ~/fast_livo2_ws:/ws fast_livo2_ros2:jazzy chown -R $(id -u):$(id -g) /ws`
 
 ## 4. Run our examples
 

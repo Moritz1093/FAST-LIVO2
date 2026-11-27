@@ -25,5 +25,5 @@ RUN git clone https://github.com/strasdat/Sophus.git && cd Sophus \
  && ldconfig
 
 RUN echo 'source /opt/ros/jazzy/setup.bash' >> /root/.bashrc \
- && echo '[ -f /root/ros2_ws/install/setup.bash ] && source /root/ros2_ws/install/setup.bash' >> /root/.bashrc
-WORKDIR /root/ros2_ws
+ && echo '[ -f /root/fast_livo2_ws/install/setup.bash ] && source /root/fast_livo2_ws/install/setup.bash' >> /root/.bashrc
+WORKDIR /root/fast_livo2_ws
