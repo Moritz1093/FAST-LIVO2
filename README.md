@@ -203,6 +203,24 @@ colcon build --packages-up-to fast_livo
 source install/setup.bash
 ```
 
+### 3.1 Docker (optional)
+
+`docker/Dockerfile` builds an image with all dependencies of section 2.2 and 2.3 (tested setup). The sources
+stay on the host in a workspace that is mounted into the container:
+
+```
+mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
+git clone -b ros2 https://github.com/Moritz1093/rpg_vikit.git
+git clone https://github.com/Moritz1093/livox_ros_driver_msgs.git
+git clone https://github.com/Moritz1093/FAST-LIVO2
+docker build -t fast_livo2_ros2:jazzy FAST-LIVO2/docker
+xhost +local:   # only for rviz2
+docker run -it --name fast_livo2_ros2 --net host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v ~/ros2_ws:/root/ros2_ws -v ~/bags:/bags fast_livo2_ros2:jazzy
+# in the container:
+colcon build --packages-up-to fast_livo && source install/setup.bash
+```
+
 ## 4. Run our examples
 
 Download FAST-LIVO2-Dataset from [Global-LVBA](https://github.com/xuankuzcr/Global-LVBA) Section IV.
