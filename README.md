@@ -1,32 +1,46 @@
 # FAST-LIVO2
 
-> **Fork note (Moritz1093/FAST-LIVO2):** this fork adds support for **compressed camera images**
-> (`sensor_msgs/CompressedImage`, e.g. JPEG), a config for the AVIACAM scanner, and selected bug fixes from
-> upstream pull requests (see below). Everything else is unchanged from
-> [hku-mars/FAST-LIVO2](https://github.com/hku-mars/FAST-LIVO2).
+> **Fork note (Moritz1093/FAST-LIVO2):** `main` is a **ROS2 (Jazzy) port**. The last ROS1 (Noetic) version is
+> the tag [`ros1-final`](https://github.com/Moritz1093/FAST-LIVO2/tree/ros1-final) (maintenance branch `ros1-fixes`).
+> Compared with [hku-mars/FAST-LIVO2](https://github.com/hku-mars/FAST-LIVO2) the fork adds support for
+> **compressed camera images**, a config for the AVIACAM scanner and selected bug fixes from upstream pull
+> requests (see below). The algorithm is unchanged.
 >
-> The image is now subscribed via `image_transport`. The new parameter `common/img_transport` selects how:
+> ### ROS2 port
+>
+> The ROS interface was ported; parameters, topics, frames and defaults are the same as in ROS1
+> (`common/lid_topic` in ROS1 is `common.lid_topic` in ROS2). Time stamps are converted exactly as in ROS1.
+> Configs are ROS2 parameter files, launch files are Python (`ros2 launch fast_livo mapping_avia.launch.py`).
+> All launch files take the arguments `rviz`, `config_file`, `camera_file`, `rviz_config`, `img_transport` and
+> `livox_msg_type`, e.g. `ros2 launch fast_livo mapping_avia.launch.py rviz:=false img_transport:=compressed`.
+>
+> **LiDAR input.** `preprocess.lidar_type` selects the input as before: Livox (`1`) uses Livox `CustomMsg`,
+> all other LiDARs `sensor_msgs/msg/PointCloud2`. The Livox `CustomMsg` exists under three type names with the
+> same fields; `common.livox_msg_type` selects it:
+>
+> | `livox_msg_type` | Message type | Source |
+> |---|---|---|
+> | `livox_ros_driver` (default) | `livox_ros_driver/msg/CustomMsg` | ROS1 bags converted to ROS2 (message package `livox_ros_driver`, see 2.5) |
+> | `livox_interfaces` | `livox_interfaces/msg/CustomMsg` | [livox_ros2_driver](https://github.com/Livox-SDK/livox_ros2_driver) (Livox SDK1, e.g. Avia) |
+> | `livox_ros_driver2` | `livox_ros_driver2/msg/CustomMsg` | [livox_ros_driver2](https://github.com/Livox-SDK/livox_ros_driver2) (Livox SDK2, e.g. Mid-360) |
+>
+> `livox_interfaces` and `livox_ros_driver2` are built in only if their package is found when `fast_livo` is
+> built (build or source it first). If the LiDAR topic is published with another type than configured, the node
+> prints a warning with the setting to use.
+>
+> **Camera input.** The image is subscribed via `image_transport`; `common.img_transport` selects how:
 >
 > | `img_transport` | `img_topic` (base topic) | Subscribed topic | Message type |
 > |---|---|---|---|
-> | `raw` (default, same as upstream) | `/camera/image_raw` | `/camera/image_raw` | `sensor_msgs/Image` |
-> | `compressed` | `/camera/image` | `/camera/image/compressed` | `sensor_msgs/CompressedImage` |
+> | `raw` (default, same as upstream) | `/camera/image_raw` | `/camera/image_raw` | `sensor_msgs/msg/Image` |
+> | `compressed` | `/camera/image` | `/camera/image/compressed` | `sensor_msgs/msg/CompressedImage` |
 >
 > For `compressed`, set `img_topic` to the topic **without** the `/compressed` suffix; image_transport appends it.
-> Example (`config/avia.yaml`):
->
-> ```yaml
-> common:
->   img_topic: "/camera/image"
->   img_transport: "compressed"
-> ```
->
-> Requires the plugin `compressed_image_transport` (Noetic: `sudo apt install ros-noetic-image-transport-plugins`).
-> The `republish` node in the launch files is no longer needed for compressed bags.
-> Other plugins (e.g. `theora`) work the same way if installed.
+> Requires `compressed_image_transport` (`sudo apt install ros-jazzy-image-transport-plugins`). The ROS1
+> `republish` node is not needed. Other plugins (e.g. `theora`) work the same way if installed.
 >
 > Config for the AVIACAM scanner (Livox Avia + hardware-synced camera, compressed images):
-> `roslaunch fast_livo mapping_aviacam.launch` (`config/aviacam.yaml`, `config/camera_aviacam.yaml`).
+> `ros2 launch fast_livo mapping_aviacam.launch.py` (`config/aviacam.yaml`, `config/camera_aviacam.yaml`).
 >
 > **Bug fixes** (cherry-picked, original authors kept):
 > [#90](https://github.com/hku-mars/FAST-LIVO2/pull/90) (NaN/zero IMU dt),
@@ -36,7 +50,7 @@
 > plus IMU/images buffered before the first LiDAR frame for a deterministic start
 > (ported from [samuelyhsu/FAST-LIVO2@018258d](https://github.com/samuelyhsu/FAST-LIVO2/commit/018258d)).
 >
-> Tested on ROS Noetic (`rosbag play -d 2`, all messages received; no crashes or dropped frames in any run):
+> Tested on ROS1 Noetic, tag `ros1-final` (`rosbag play -d 2`, all messages received; no crashes or dropped frames in any run):
 >
 > | Test | `main` (upstream) | with fixes |
 > |---|---|---|
@@ -98,17 +112,20 @@ The [**FAST-Calib**](https://github.com/hku-mars/FAST-Calib) toolkit is recommen
 
 ## 2. Prerequisited
 
-### 2.1 Ubuntu and ROS
+### 2.1 Ubuntu and ROS2
 
-Ubuntu 18.04~20.04.  [ROS Installation](http://wiki.ros.org/ROS/Installation).
+Ubuntu 24.04, ROS2 Jazzy. [ROS2 Installation](https://docs.ros.org/en/jazzy/Installation.html).
+For ROS1 (Ubuntu 18.04~20.04) use the tag `ros1-final`.
 
-### 2.2 PCL && Eigen && OpenCV
+### 2.2 PCL && Eigen && OpenCV && ROS packages
 
-PCL>=1.8, Follow [PCL Installation](https://pointclouds.org/). 
+From Ubuntu/ROS2 packages (tested: PCL 1.14, Eigen 3.4, OpenCV 4.6):
 
-Eigen>=3.3.4, Follow [Eigen Installation](https://eigen.tuxfamily.org/index.php?title=Main_Page).
-
-OpenCV>=4.2, Follow [Opencv Installation](http://opencv.org/).
+```bash
+sudo apt install libpcl-dev libeigen3-dev libopencv-dev python3-colcon-common-extensions \
+  ros-jazzy-pcl-ros ros-jazzy-pcl-conversions ros-jazzy-cv-bridge ros-jazzy-image-transport \
+  ros-jazzy-image-transport-plugins ros-jazzy-tf2-ros ros-jazzy-rosbag2-storage-mcap
+```
 
 ### 2.3 Sophus
 
@@ -118,42 +135,63 @@ Sophus Installation for the non-templated/double-only version.
 git clone https://github.com/strasdat/Sophus.git
 cd Sophus
 git checkout a621ff
+sed -i 's/unit_complex_.real() = 1.;/unit_complex_ = std::complex<double>(1, 0);/' sophus/so2.cpp
+sed -i 's/unit_complex_.imag() = 0.;//' sophus/so2.cpp
 mkdir build && cd build && cmake ..
 make
 sudo make install
+sudo ldconfig
 ```
+
+(The two `sed` lines are needed with newer compilers.)
 
 ### 2.4 Vikit
 
-Vikit contains camera models, some math and interpolation functions that we need. Vikit is a catkin project, therefore, download it into your catkin workspace source folder.
+Vikit contains camera models, some math and interpolation functions that we need. Use the ROS2 version
+(ament packages `vikit_common`, `vikit_ros`):
 
+<!-- TODO(R7): repository URL once published -->
 ```bash
-# Different from the one used in fast-livo1
-cd catkin_ws/src
-git clone https://github.com/xuankuzcr/rpg_vikit.git 
+cd ~/ros2_ws/src
+git clone -b ros2 https://github.com/Moritz1093/rpg_vikit.git
+```
+
+### 2.5 Livox message package
+
+The ROS2 message package `livox_ros_driver` (only `CustomMsg`/`CustomPoint`, no driver, no Livox SDK) keeps
+the type name of ROS1 Livox bags:
+
+<!-- TODO(R7): repository URL once published -->
+```bash
+cd ~/ros2_ws/src
+git clone https://github.com/Moritz1093/livox_ros_driver.git
 ```
 
 ## 3. Build
 
-Clone the repository and catkin_make:
+Clone the repository and build with colcon:
 
 ```
-cd ~/catkin_ws/src
-git clone https://github.com/hku-mars/FAST-LIVO2
-cd ../
-catkin_make
-source ~/catkin_ws/devel/setup.bash
+cd ~/ros2_ws/src
+git clone https://github.com/Moritz1093/FAST-LIVO2
+cd ..
+colcon build --packages-up-to fast_livo
+source install/setup.bash
 ```
 
 ## 4. Run our examples
 
 Download FAST-LIVO2-Dataset from [Global-LVBA](https://github.com/xuankuzcr/Global-LVBA) Section IV.
+The dataset is recorded with ROS1; convert the bags to ROS2 first.
+<!-- TODO(R4): conversion command once tested -->
 
 ```
-roslaunch fast_livo mapping_avia.launch
-rosbag play YOUR_DOWNLOADED.bag
+ros2 launch fast_livo mapping_avia.launch.py
+ros2 bag play YOUR_CONVERTED_BAG
 ```
 
+Results (poses with `evo.pose_output_en`, point clouds with `pcd_save.pcd_save_en`) are written to `Log/`
+in the source folder, as in ROS1.
 
 ## 5. License
 
