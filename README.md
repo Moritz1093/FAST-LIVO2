@@ -39,6 +39,12 @@
 > Requires `compressed_image_transport` (`sudo apt install ros-jazzy-image-transport-plugins`). The ROS1
 > `republish` node is not needed. Other plugins (e.g. `theora`) work the same way if installed.
 >
+> **Live sensors (QoS).** The node subscribes to LiDAR, IMU and camera as *reliable*. A driver that publishes
+> *best effort* (e.g. many camera drivers, `SensorDataQoS`) does not connect: no data arrives, ROS2 only prints
+> an incompatible-QoS warning. Publish reliable, with a deep history for the IMU (e.g. 1000 messages), so that
+> nothing is dropped when the node falls behind for a moment. Bags recorded with ROS2 store this QoS and play
+> back with it; for bags converted from ROS1 see `config/play_qos.yaml` in section 4.
+>
 > Config for the AVIACAM scanner (Livox Avia + hardware-synced camera, compressed images):
 > `ros2 launch fast_livo mapping_aviacam.launch.py` (`config/aviacam.yaml`, `config/camera_aviacam.yaml`).
 >
@@ -72,6 +78,10 @@
 > | same: memory at the end (RSS) | 439–865 MB | 1–9 % less |
 > | NTU-VIRAL eee_01, 3 runs: error vs. ground truth (APE RMSE) | 2.50 cm | 2.50 cm |
 > | same: time per frame | 21.5 ms | 21.2 ms (−1 %) |
+>
+> Known issue: on NTU-VIRAL the runs still differ slightly from run to run, in ROS1 as well (median 0.5 cm in ROS1,
+> 2.7 cm in ROS2, 3 runs each; all images and LiDAR scans received); the cause is not found yet. The error vs.
+> ground truth stays at 2.49–2.51 cm in every run.
 >
 > **Not included:** [#311](https://github.com/hku-mars/FAST-LIVO2/pull/311) (covariance with attitude/extrinsics)
 > gave no measurable accuracy gain on NTU-VIRAL (2.50 cm) at +3–5 % time per frame;
