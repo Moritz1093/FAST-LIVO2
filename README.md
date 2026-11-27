@@ -150,7 +150,6 @@ sudo ldconfig
 Vikit contains camera models, some math and interpolation functions that we need. Use the ROS2 version
 (ament packages `vikit_common`, `vikit_ros`):
 
-<!-- TODO(R7): repository URL once published -->
 ```bash
 cd ~/ros2_ws/src
 git clone -b ros2 https://github.com/Moritz1093/rpg_vikit.git
@@ -161,11 +160,12 @@ git clone -b ros2 https://github.com/Moritz1093/rpg_vikit.git
 The ROS2 message package `livox_ros_driver` (only `CustomMsg`/`CustomPoint`, no driver, no Livox SDK) keeps
 the type name of ROS1 Livox bags:
 
-<!-- TODO(R7): repository URL once published -->
 ```bash
 cd ~/ros2_ws/src
-git clone https://github.com/Moritz1093/livox_ros_driver.git
+git clone https://github.com/Moritz1093/livox_ros_driver_msgs.git
 ```
+
+(The repository is named `livox_ros_driver_msgs`; the ROS2 package inside is `livox_ros_driver`.)
 
 ## 3. Build
 
