@@ -216,10 +216,19 @@ git clone https://github.com/Moritz1093/FAST-LIVO2
 docker build -t fast_livo2_ros2:jazzy FAST-LIVO2/docker
 xhost +local:   # only for rviz2
 docker run -it --name fast_livo2_ros2 --net host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v ~/ros2_ws:/root/ros2_ws -v ~/bags:/bags fast_livo2_ros2:jazzy
+  -e ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST \
+  -v ~/ros2_ws:/root/ros2_ws -v ~/bags:/bags:ro fast_livo2_ros2:jazzy
 # in the container:
 colcon build --packages-up-to fast_livo && source install/setup.bash
 ```
+
+- `~/bags` is the host folder with the (converted) bags; adapt it to where your bags are. It is mounted
+  read-only (`:ro`), convert the bags on the host (section 4).
+- `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST` keeps ROS2 discovery on this computer (`--net host` would otherwise
+  send and receive ROS2 traffic on the local network). Leave it out for live sensors on other machines.
+- Back into the container later: `docker start -ai fast_livo2_ros2`; a second shell: `docker exec -it fast_livo2_ros2 bash`.
+- Files created in the container (`build/`, `install/`, `log/`, `Log/` results) belong to root. Before deleting
+  them on the host: `docker run --rm -v ~/ros2_ws:/ws fast_livo2_ros2:jazzy chown -R $(id -u):$(id -g) /ws`
 
 ## 4. Run our examples
 
@@ -248,8 +257,48 @@ IMU messages are lost before they reach the node (results then differ from run t
 them to the file in the same way.
 For bags with compressed images (e.g. Bright_Screen_Wall) add `img_transport:=compressed` to the launch command.
 
+Launch commands per dataset (add `rviz:=false` to run without window):
+
+| Bags | Launch |
+|---|---|
+| FAST-LIVO2-Dataset Bright_Screen_Wall (compressed images) | `ros2 launch fast_livo mapping_avia.launch.py img_transport:=compressed` |
+| FAST-LIVO2-Dataset Retail_Street, CBD_Building_01 (raw images) | `ros2 launch fast_livo mapping_avia.launch.py` |
+| NTU-VIRAL | `ros2 launch fast_livo mapping_ouster_ntu.launch.py` |
+| AVIACAM, compressed recordings | `ros2 launch fast_livo mapping_aviacam.launch.py` |
+| AVIACAM, raw recordings | `ros2 launch fast_livo mapping_aviacam.launch.py img_transport:=raw` |
+
+AVIACAM raw recordings name the image `/camera/image_raw`, the config expects `/camera/image`; rename it when
+playing (the bag path must come **before** `--remap`):
+
+```
+ros2 bag play --delay 2 --qos-profile-overrides-path config/play_qos.yaml <bag> --remap /camera/image_raw:=/camera/image
+```
+
 Results (poses with `evo.pose_output_en`, point clouds with `pcd_save.pcd_save_en`) are written to `Log/`
-in the source folder, as in ROS1.
+in the source folder, as in ROS1 (poses: `Log/result/<seq_name>.txt`, TUM format; point clouds: `Log/pcd/`).
+To change settings, pass a copy of the config instead of editing the file in the repository:
+`ros2 launch fast_livo mapping_avia.launch.py config_file:=/path/my.yaml`.
+
+### 4.1 Reference values (ROS2, tag `ros2-v1`)
+
+| Bag | Expected |
+|---|---|
+| FAST-LIVO2-Dataset Bright_Screen_Wall | 665 poses, ~11.8 ms per frame, runs bit-identical; 2× "imu loop back" is normal (it is in the bag) |
+| NTU-VIRAL eee_01 | APE RMSE vs. ground truth ~2.50 cm |
+| AVIACAM comp/raw (27.11.) | ~191–194 m trajectory, end − start < 1 cm |
+
+### 4.2 Pitfalls
+
+- **Wait after the bag ends.** With dense clouds (AVIACAM outdoors ~9000 points per scan after filtering) the node
+  is slower than real time (compressed bag: 23 s behind at the end). Stop it with Ctrl+C only when its log is
+  quiet, otherwise the last seconds are missing.
+- **rviz2 ignores Ctrl+C:** close the window or `pkill -KILL -f "[r]viz2"`.
+- **`pkill fastlivo_mapping` does not work** (process name longer than 15 characters):
+  `pkill -INT -f "[l]ib/fast_livo/fastlivo_mapping"`.
+- **`ros2 node list` shows old nodes:** daemon cache, `ros2 daemon stop` or use `--no-daemon`.
+- **Wrong Livox type:** after 2 s the node prints a warning with the setting for `common.livox_msg_type`
+  (`livox_ros_driver` for converted ROS1 bags, `livox_interfaces` / `livox_ros_driver2` for the ROS2 drivers).
+- **Live drivers with best-effort QoS** do not connect (see "Live sensors (QoS)" above).
 
 ## 5. License
 
