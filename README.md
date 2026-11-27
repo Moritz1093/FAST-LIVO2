@@ -145,6 +145,25 @@ catkin_make
 source ~/catkin_ws/devel/setup.bash
 ```
 
+### 3.1 Docker (optional)
+
+`docker/Dockerfile` builds an image with all dependencies (Ubuntu 20.04, ROS Noetic, Sophus with the patch
+needed for GCC 9, Livox SDK). The sources stay on the host in a catkin workspace that is mounted into the
+container. Tested with rpg_vikit `6c886c8` and livox_ros_driver `3d240d5`:
+
+```
+mkdir -p ~/catkin_ws/src && cd ~/catkin_ws/src
+git clone https://github.com/xuankuzcr/rpg_vikit.git
+git clone https://github.com/Livox-SDK/livox_ros_driver.git
+git clone -b ros1-fixes https://github.com/Moritz1093/FAST-LIVO2
+docker build -t fast_livo2_ros1:noetic FAST-LIVO2/docker
+xhost +local:   # only for rviz
+docker run -it --name fast_livo2_ros1 --net host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v ~/catkin_ws:/root/catkin_ws -v ~/bags:/bags fast_livo2_ros1:noetic
+# in the container:
+catkin build && source devel/setup.bash
+```
+
 ## 4. Run our examples
 
 Download FAST-LIVO2-Dataset from [Global-LVBA](https://github.com/xuankuzcr/Global-LVBA) Section IV.
