@@ -1,7 +1,8 @@
 # FAST-LIVO2
 
-> **Fork note (Moritz1093/FAST-LIVO2):** this fork only adds support for **compressed camera images**
-> (`sensor_msgs/CompressedImage`, e.g. JPEG). Everything else is unchanged from
+> **Fork note (Moritz1093/FAST-LIVO2):** this fork adds support for **compressed camera images**
+> (`sensor_msgs/CompressedImage`, e.g. JPEG), a config for the AVIACAM scanner, and selected bug fixes from
+> upstream pull requests (see below). Everything else is unchanged from
 > [hku-mars/FAST-LIVO2](https://github.com/hku-mars/FAST-LIVO2).
 >
 > The image is now subscribed via `image_transport`. The new parameter `common/img_transport` selects how:
@@ -27,15 +28,27 @@
 > Config for the AVIACAM scanner (Livox Avia + hardware-synced camera, compressed images):
 > `roslaunch fast_livo mapping_aviacam.launch` (`config/aviacam.yaml`, `config/camera_aviacam.yaml`).
 >
-> **Branch `ros1-fixes`:** bug fixes from upstream pull requests (cherry-picked, original authors kept):
-> [#90](https://github.com/hku-mars/FAST-LIVO2/pull/90) (NaN/zero IMU dt) and
+> **Bug fixes** (cherry-picked, original authors kept):
+> [#90](https://github.com/hku-mars/FAST-LIVO2/pull/90) (NaN/zero IMU dt),
 > [#465](https://github.com/hku-mars/FAST-LIVO2/pull/465) (first-point undistortion, VIO leak/uninitialized
-> memory/out-of-bounds reads, per-point mutex removed), plus IMU/images buffered before the first LiDAR frame
-> for a deterministic start (ported from [samuelyhsu/FAST-LIVO2@018258d](https://github.com/samuelyhsu/FAST-LIVO2/commit/018258d)).
-> Tested on ROS Noetic with FAST-LIVO2-Dataset bags (Retail_Street, CBD_Building_01, Bright_Screen_Wall),
-> 5 runs each vs. `main` (`rosbag play -d 2`, all messages received): no crashes or dropped frames,
-> drift unchanged or better, **15–21 % less processing time per frame**, and **reproducible runs**
-> (identical trajectories run to run; `main` varies by ~0.4 cm).
+> memory/out-of-bounds reads, per-point mutex removed),
+> [#455](https://github.com/hku-mars/FAST-LIVO2/pull/455) (VIO no longer waits on the LiDAR buffer; lower latency live),
+> plus IMU/images buffered before the first LiDAR frame for a deterministic start
+> (ported from [samuelyhsu/FAST-LIVO2@018258d](https://github.com/samuelyhsu/FAST-LIVO2/commit/018258d)).
+>
+> Tested on ROS Noetic (`rosbag play -d 2`, all messages received; no crashes or dropped frames in any run):
+>
+> | Test | `main` (upstream) | with fixes |
+> |---|---|---|
+> | FAST-LIVO2-Dataset (Retail_Street, CBD_Building_01, Bright_Screen_Wall), 5 runs each: time per frame | 14.1–40.0 ms | **15–21 % less** |
+> | same: run-to-run difference | ~0.4 cm | **0.00 cm** (identical) |
+> | NTU-VIRAL eee_01, 3 runs: error vs. ground truth (APE RMSE) | 2.51 cm | 2.50 cm |
+> | same: time per frame | 23.0 ms | 21.8 ms (−5 %) |
+>
+> **Not included:** [#311](https://github.com/hku-mars/FAST-LIVO2/pull/311) (covariance with attitude/extrinsics)
+> gave no measurable accuracy gain on NTU-VIRAL (2.50 cm) at +3–5 % time per frame;
+> [#466](https://github.com/hku-mars/FAST-LIVO2/pull/466) (scan spanning several images) gave no accuracy gain
+> and made runs timing-dependent (one NTU run off by 4.5 cm).
 
 ## FAST-LIVO2: Fast, Direct LiDAR-Inertial-Visual Odometry
 
