@@ -182,13 +182,25 @@ source install/setup.bash
 ## 4. Run our examples
 
 Download FAST-LIVO2-Dataset from [Global-LVBA](https://github.com/xuankuzcr/Global-LVBA) Section IV.
-The dataset is recorded with ROS1; convert the bags to ROS2 first.
-<!-- TODO(R4): conversion command once tested -->
+The dataset is recorded with ROS1; convert the bags to ROS2 (mcap) first with
+[rosbags](https://gitlab.com/ternaris/rosbags) (no ROS1 installation needed):
+
+```
+pip install rosbags
+rosbags-convert --src Retail_Street.bag --dst Retail_Street --dst-storage mcap
+```
+
+Message contents and time stamps stay the same; Livox messages keep the type `livox_ros_driver/msg/CustomMsg`
+(default `livox_msg_type`). `--include-topic` keeps only the given topics (e.g. to leave out unused topics of
+large bags).
 
 ```
 ros2 launch fast_livo mapping_avia.launch.py
-ros2 bag play YOUR_CONVERTED_BAG
+ros2 bag play --delay 2 Retail_Street
 ```
+
+`--delay 2` gives the node time to connect; without it the first messages of the bag can be lost.
+For bags with compressed images (e.g. Bright_Screen_Wall) add `img_transport:=compressed` to the launch command.
 
 Results (poses with `evo.pose_output_en`, point clouds with `pcd_save.pcd_save_en`) are written to `Log/`
 in the source folder, as in ROS1.
