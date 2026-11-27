@@ -54,7 +54,9 @@ public:
   void RGBpointBodyLidarToIMU(PointType const *const pi, PointType *const po);
   void RGBpointBodyToWorld(PointType const *const pi, PointType *const po);
   void standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg);
-  void livox_pcl_cbk(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &msg_in);
+  template <typename LivoxMsgT> void livox_pcl_cbk(const std::shared_ptr<const LivoxMsgT> &msg_in);
+  void subscribeLivox();
+  void checkLidarTopicType();
   void imu_cbk(const sensor_msgs::msg::Imu::ConstSharedPtr &msg_in);
   void img_cbk(const sensor_msgs::msg::Image::ConstSharedPtr &msg_in);
   void publish_img_rgb(const image_transport::Publisher &pubImage, VIOManagerPtr vio_manager);
@@ -77,7 +79,7 @@ public:
   std::unordered_map<VOXEL_LOCATION, VoxelOctoTree *> voxel_map;
   
   string root_dir;
-  string lid_topic, imu_topic, seq_name, img_topic, img_transport;
+  string lid_topic, imu_topic, seq_name, img_topic, img_transport, livox_msg_type;
   V3D extT;
   M3D extR;
 
@@ -172,7 +174,9 @@ public:
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr plane_pub;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr voxel_pub;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pcl;
-  rclcpp::Subscription<livox_ros_driver::msg::CustomMsg>::SharedPtr sub_pcl_livox;
+  rclcpp::SubscriptionBase::SharedPtr sub_pcl_livox; // one of the supported Livox CustomMsg types
+  rclcpp::TimerBase::SharedPtr lidar_type_check_timer;
+  std::string lidar_type_warned;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu;
   image_transport::Subscriber sub_img;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pubLaserCloudFullRes;

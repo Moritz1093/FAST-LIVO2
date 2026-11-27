@@ -15,6 +15,12 @@ which is included as part of this source code package.
 
 #include "common_lib.h"
 #include <livox_ros_driver/msg/custom_msg.hpp>
+#ifdef FASTLIVO_HAVE_LIVOX_INTERFACES
+#include <livox_interfaces/msg/custom_msg.hpp>
+#endif
+#ifdef FASTLIVO_HAVE_LIVOX_ROS_DRIVER2
+#include <livox_ros_driver2/msg/custom_msg.hpp>
+#endif
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -156,7 +162,8 @@ public:
   Preprocess();
   ~Preprocess();
 
-  void process(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &msg, PointCloudXYZI::Ptr &pcl_out);
+  // Livox CustomMsg: livox_ros_driver (ROS1 bags), livox_interfaces, livox_ros_driver2 (same fields)
+  template <typename LivoxMsgT> void process(const std::shared_ptr<const LivoxMsgT> &msg, PointCloudXYZI::Ptr &pcl_out);
   void process(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg, PointCloudXYZI::Ptr &pcl_out);
   void set(bool feat_en, int lid_type, double bld, int pfilt_num);
 
@@ -170,7 +177,7 @@ public:
   bool feature_enabled, given_offset_time;
 
 private:
-  void avia_handler(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &msg);
+  template <typename LivoxMsgT> void avia_handler(const std::shared_ptr<const LivoxMsgT> &msg);
   void oust64_handler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg);
   void velodyne_handler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg);
   void xt32_handler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &msg);

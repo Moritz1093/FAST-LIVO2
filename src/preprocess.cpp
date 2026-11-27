@@ -51,9 +51,9 @@ void Preprocess::set(bool feat_en, int lid_type, double bld, int pfilt_num)
   point_filter_num = pfilt_num;
 }
 
-void Preprocess::process(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &msg, PointCloudXYZI::Ptr &pcl_out)
+template <typename LivoxMsgT> void Preprocess::process(const std::shared_ptr<const LivoxMsgT> &msg, PointCloudXYZI::Ptr &pcl_out)
 {
-  avia_handler(msg);
+  avia_handler<LivoxMsgT>(msg);
   *pcl_out = pl_surf;
 }
 
@@ -92,7 +92,7 @@ void Preprocess::process(const sensor_msgs::msg::PointCloud2::ConstSharedPtr &ms
   *pcl_out = pl_surf;
 }
 
-void Preprocess::avia_handler(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &msg)
+template <typename LivoxMsgT> void Preprocess::avia_handler(const std::shared_ptr<const LivoxMsgT> &msg)
 {
   pl_surf.clear();
   pl_corn.clear();
@@ -1124,3 +1124,12 @@ bool Preprocess::edge_jump_judge(const PointCloudXYZI &pl, vector<orgtype> &type
 
   return true;
 }
+
+// explicit instantiation for the Livox message types this build supports
+template void Preprocess::process<livox_ros_driver::msg::CustomMsg>(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &, PointCloudXYZI::Ptr &);
+#ifdef FASTLIVO_HAVE_LIVOX_INTERFACES
+template void Preprocess::process<livox_interfaces::msg::CustomMsg>(const livox_interfaces::msg::CustomMsg::ConstSharedPtr &, PointCloudXYZI::Ptr &);
+#endif
+#ifdef FASTLIVO_HAVE_LIVOX_ROS_DRIVER2
+template void Preprocess::process<livox_ros_driver2::msg::CustomMsg>(const livox_ros_driver2::msg::CustomMsg::ConstSharedPtr &, PointCloudXYZI::Ptr &);
+#endif

@@ -69,6 +69,8 @@ void LIVMapper::readParameters()
   lidar_en = vk::getParam<int>(node, "common/lidar_en", 1);
   img_topic = vk::getParam<string>(node, "common/img_topic", "/left_camera/image");
   img_transport = vk::getParam<string>(node, "common/img_transport", "raw"); // raw | compressed (image_transport plugin)
+  // Livox CustomMsg type (lidar_type 1): livox_ros_driver (ROS1 bags, converted) | livox_interfaces | livox_ros_driver2
+  livox_msg_type = vk::getParam<string>(node, "common/livox_msg_type", "livox_ros_driver");
 
   normal_en = vk::getParam<bool>(node, "vio/normal_en", true);
   inverse_composition_en = vk::getParam<bool>(node, "vio/inverse_composition_en", false);
@@ -210,8 +212,7 @@ void LIVMapper::initializeSubscribersAndPublishers()
   const size_t queue_depth = 200000;
   const rclcpp::QoS qos_in = rclcpp::QoS(rclcpp::KeepLast(queue_depth)).reliable();
   if (p_pre->lidar_type == AVIA)
-    sub_pcl_livox = node->create_subscription<livox_ros_driver::msg::CustomMsg>(
-        lid_topic, qos_in, std::bind(&LIVMapper::livox_pcl_cbk, this, std::placeholders::_1));
+    subscribeLivox();
   else
     sub_pcl = node->create_subscription<sensor_msgs::msg::PointCloud2>(
         lid_topic, qos_in, std::bind(&LIVMapper::standard_pcl_cbk, this, std::placeholders::_1));
@@ -241,6 +242,91 @@ void LIVMapper::initializeSubscribersAndPublishers()
   imu_prop_timer = node->create_wall_timer(std::chrono::microseconds(4000), std::bind(&LIVMapper::imu_prop_callback, this));
   voxelmap_manager->voxel_map_pub_= node->create_publisher<visualization_msgs::msg::MarkerArray>("/planes", 10000);
   tf_broadcaster = std::make_shared<tf2_ros::TransformBroadcaster>(node);
+  // warn if the LiDAR topic is published with another type than configured (no data would arrive)
+  lidar_type_check_timer = node->create_wall_timer(std::chrono::seconds(2), std::bind(&LIVMapper::checkLidarTopicType, this));
+}
+
+namespace
+{
+// ROS type name of each supported Livox CustomMsg variant (key: common.livox_msg_type)
+const std::vector<std::pair<std::string, std::string>> kLivoxMsgTypes = {
+    {"livox_ros_driver", "livox_ros_driver/msg/CustomMsg"},
+    {"livox_interfaces", "livox_interfaces/msg/CustomMsg"},
+    {"livox_ros_driver2", "livox_ros_driver2/msg/CustomMsg"},
+};
+
+std::string supportedLivoxMsgTypes()
+{
+  std::string s = "livox_ros_driver";
+#ifdef FASTLIVO_HAVE_LIVOX_INTERFACES
+  s += ", livox_interfaces";
+#endif
+#ifdef FASTLIVO_HAVE_LIVOX_ROS_DRIVER2
+  s += ", livox_ros_driver2";
+#endif
+  return s;
+}
+} // namespace
+
+void LIVMapper::subscribeLivox()
+{
+  const rclcpp::QoS qos_in = rclcpp::QoS(rclcpp::KeepLast(200000)).reliable();
+  if (livox_msg_type == "livox_ros_driver")
+  {
+    sub_pcl_livox = node->create_subscription<livox_ros_driver::msg::CustomMsg>(
+        lid_topic, qos_in, std::bind(&LIVMapper::livox_pcl_cbk<livox_ros_driver::msg::CustomMsg>, this, std::placeholders::_1));
+    return;
+  }
+#ifdef FASTLIVO_HAVE_LIVOX_INTERFACES
+  if (livox_msg_type == "livox_interfaces")
+  {
+    sub_pcl_livox = node->create_subscription<livox_interfaces::msg::CustomMsg>(
+        lid_topic, qos_in, std::bind(&LIVMapper::livox_pcl_cbk<livox_interfaces::msg::CustomMsg>, this, std::placeholders::_1));
+    return;
+  }
+#endif
+#ifdef FASTLIVO_HAVE_LIVOX_ROS_DRIVER2
+  if (livox_msg_type == "livox_ros_driver2")
+  {
+    sub_pcl_livox = node->create_subscription<livox_ros_driver2::msg::CustomMsg>(
+        lid_topic, qos_in, std::bind(&LIVMapper::livox_pcl_cbk<livox_ros_driver2::msg::CustomMsg>, this, std::placeholders::_1));
+    return;
+  }
+#endif
+  throw std::runtime_error("common.livox_msg_type '" + livox_msg_type + "' is not supported by this build. Supported: " +
+                           supportedLivoxMsgTypes() + " (livox_interfaces / livox_ros_driver2 need their package at build time).");
+}
+
+void LIVMapper::checkLidarTopicType()
+{
+  if (last_timestamp_lidar > 0.0) // data arrives, nothing to check
+  {
+    lidar_type_check_timer->cancel();
+    return;
+  }
+  std::string expected = "sensor_msgs/msg/PointCloud2";
+  if (p_pre->lidar_type == AVIA)
+    for (const auto &t : kLivoxMsgTypes)
+      if (t.first == livox_msg_type) expected = t.second;
+
+  const std::string topic = (!lid_topic.empty() && lid_topic[0] == '/') ? lid_topic : "/" + lid_topic;
+  // only publishers count (the own subscription has the configured type)
+  std::set<std::string> types;
+  for (const auto &info : node->get_publishers_info_by_topic(topic)) types.insert(info.topic_type());
+  if (types.empty() || types.count(expected)) return; // no publisher yet, or one with the configured type
+  std::string published;
+  for (const auto &type : types) published += (published.empty() ? "" : ", ") + type;
+  if (published.empty() || published == lidar_type_warned) return;
+  lidar_type_warned = published;
+
+  std::string hint;
+  for (const auto &t : kLivoxMsgTypes)
+    if (published.find(t.second) != std::string::npos)
+      hint = (p_pre->lidar_type == AVIA) ? "set livox_msg_type:=" + t.first : "set preprocess.lidar_type: 1 (Livox) and livox_msg_type:=" + t.first;
+  if (hint.empty() && published.find("sensor_msgs/msg/PointCloud2") != std::string::npos)
+    hint = "PointCloud2 needs preprocess.lidar_type of the LiDAR (e.g. 3 Ouster), not 1 (Livox)";
+  RCLCPP_WARN(node->get_logger(), "LiDAR topic %s is published as %s, but %s is configured -> no LiDAR data. %s", topic.c_str(),
+              published.c_str(), expected.c_str(), hint.c_str());
 }
 
 void LIVMapper::handleFirstFrame() 
@@ -753,11 +839,11 @@ void LIVMapper::standard_pcl_cbk(const sensor_msgs::msg::PointCloud2::ConstShare
   sig_buffer.notify_all();
 }
 
-void LIVMapper::livox_pcl_cbk(const livox_ros_driver::msg::CustomMsg::ConstSharedPtr &msg_in)
+template <typename LivoxMsgT> void LIVMapper::livox_pcl_cbk(const std::shared_ptr<const LivoxMsgT> &msg_in)
 {
   if (!lidar_en) return;
   mtx_buffer.lock();
-  livox_ros_driver::msg::CustomMsg::SharedPtr msg(new livox_ros_driver::msg::CustomMsg(*msg_in));
+  std::shared_ptr<LivoxMsgT> msg(new LivoxMsgT(*msg_in));
   // if ((abs(stamp2sec(msg->header.stamp) - last_timestamp_lidar) > 0.2 && last_timestamp_lidar > 0) || sync_jump_flag)
   // {
   //   RCLCPP_WARN(fastlivo_logger(), "lidar jumps %.3f\n", stamp2sec(msg->header.stamp) - last_timestamp_lidar);
@@ -780,7 +866,7 @@ void LIVMapper::livox_pcl_cbk(const livox_ros_driver::msg::CustomMsg::ConstShare
   }
   // RCLCPP_INFO(fastlivo_logger(), "get point cloud at time: %.6f", stamp2sec(msg->header.stamp));
   PointCloudXYZI::Ptr ptr(new PointCloudXYZI());
-  p_pre->process(msg, ptr);
+  p_pre->process<LivoxMsgT>(msg, ptr);
 
   if (!ptr || ptr->empty()) {
     RCLCPP_ERROR(fastlivo_logger(), "Received an empty point cloud");
